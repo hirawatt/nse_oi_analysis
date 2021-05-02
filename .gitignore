@@ -1,4 +1,5 @@
 .idea
 /venv
 oidata.json
+/.ipynb*
 creds.json
