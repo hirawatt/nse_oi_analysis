@@ -4,25 +4,18 @@ import pandas as pd
 from pandas.io.json import build_table_schema
 from glom import glom
 import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+import graphviz as graphviz
 
-#import xlwings as xw # Works only on Windows
-from openpyxl import Workbook, load_workbook
-from openpyxl.utils import get_column_letter
-
-# Pandas Output Format
-pd.set_option('display.width', 1500)
-pd.set_option('display.max_rows', 1500)
-pd.set_option('display.max_columns', 75)
+# streamlit
+st.set_page_config(page_title='Option Chain Analysis', page_icon=':shark:', layout='wide', initial_sidebar_state='expanded')
+st.title('Option Chain Analysis')
 
 # Variables
 url = 'https://www.nseindia.com/api/option-chain-indices?symbol=BANKNIFTY'
 expiry = '30-Sep-2021'
 excel_file = 'option_chain_analysis.xlsx'
-#wb = xw.Book(excel_file)
-#sheet_oi_single = wb.sheets('OIData')
-wb = Workbook()
-ws1 = wb.active
-#wb = load_workbook(excel_file)
 
 headers = {
     'User-Agent' : "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0",
@@ -42,59 +35,58 @@ for cookie in cookies:
     if 'bm_sv' in cookie or 'nseappid' in cookie or 'nsit' in cookie:
         session.cookies.set(cookie, cookies[cookie])
 
-
-#df = pd.DataFrame().from_dict(data['records']['data'])
-#print(df.tail())
-#print(data.content)
-
 def fetch_oi():
 
-    expiry = '30-Sep-2021'
     data = session.get(url, headers=headers, timeout=25)
-    #print(data.headers)
-    print(data.status_code)
+    #st.write(data.headers)
 
     if data.status_code == 1:
         data = data.json()
-        #print(type(data))
         with open("oidata.json", "w") as files:
             files.write(json.dumps(data, sort_keys=True))
+        st.success('Data Updated')
     else:
-        #with open('oidata.json','r') as f:
-        #    data = json.loads(f.read())
         data = pd.read_json('oidata.json')
-        st.write(data)
-        #print(type(data))
+        st.warning('Using Old Data')
 
-    data.to_excel("option_chain_analysis.xlsx", sheet_name='OIData')
-    #build_table_schema(data)
-    #ce_values = pd.json_normalize(data)
-    #ce_value.to_excel("option_chain_analysis.xlsx", sheet_name='CEValues')
-
-"""
-    ws2 = wb.create_sheet(title='OIData')
-    ws2["A2"].value = data
-    wb.save(filename=excel_file)
-
-    if expiry:
-        ce_values = [data['CE'] for data in data['records']['data'] if "CE" in data and str(data['expiryDate']).lower() == str(expiry).lower()]
-        pe_values = [data['PE'] for data in data['records']['data'] if "PE" in data and str(data['expiryDate']).lower() == str(expiry).lower()]
-    else:
-        ce_values = [data['CE'] for data in data['filtered']['data'] if "CE" in data]
-        pe_values = [data['PE'] for data in data['filtered']['data'] if "PE" in data]
-
-    print(ce_values)
-
-    ce_data = pd.DataFrame(ce_values)
-    pe_data = pd.DataFrame(pe_values)
-
-    print(ce_data)
-    #print(ce_data[['strikePrice','lastPrice']])
-    #print(pe_data[['strikePrice','lastPrice']])"""
-
+    return data
 
 def main():
-    fetch_oi()
+    data = fetch_oi()
+
+    strikePrices = glom(data, 'records.strikePrices')
+    # WIDGETS
+    expiry = st.sidebar.selectbox('Expiry to Trade?', glom(data, 'records.expiryDates'))
+    script = st.sidebar.selectbox('Index to Trade?', ('NIFTY', 'BANKNIFTY', 'FINNIFTY'))
+    strikePrice = st.sidebar.slider('Select a range of Strike Prices', min(strikePrices), max(strikePrices), (min(strikePrices), max(strikePrices)))
+    max_risk = st.sidebar.number_input('Maximum Risk', min_value=2000, max_value=50000, step=500)
+    chosen = st.sidebar.radio('Options',("Call Buyer", "Call Seller", "Put Buyer", "Put Seller"))
+    options_analysis = st.sidebar.multiselect('What data analysis do you want?', ['PCR', 'OI Change', 'Red', 'Blue'], ['PCR', 'OI Change'])
+
+
+    oidata = pd.DataFrame.from_dict(pd.json_normalize(glom(data, 'records.data')), orient='columns')
+    #oidata = pd.DataFrame(glom(data, 'records.data'))
+    #ce_values = pd.DataFrame(glom(oidata, 'CE'))
+    #pe_values = pd.DataFrame(glom(oidata, 'PE'))
+
+    st.dataframe(oidata)
+    st.dataframe(oidata.style.highlight_max(axis=0))
 
 if __name__ == '__main__':
     main()
+
+# WIDGETS
+left_column, right_column = st.beta_columns(2)
+if right_column.button('Refresh', help='Click to Refresh Data'):
+    main()
+with left_column:
+    LC = st.checkbox('Long Call')
+    LP = st.checkbox('Long Put')
+    SC = st.checkbox('Short Call')
+    SP = st.checkbox('Short Put')
+
+with st.beta_expander("See explanation"):
+     st.write("""
+              # Resources
+
+     """)
