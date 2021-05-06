@@ -1,5 +1,7 @@
 .idea
 /venv
-oidata.json
 /.ipynb*
+
+oidata.json
+sample*
 creds.json

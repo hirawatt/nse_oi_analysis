@@ -2,7 +2,9 @@ import requests
 import json
 import pandas as pd
 from pandas.io.json import build_table_schema
-from glom import glom
+
+from glom import glom, T, Merge, Iter, Coalesce
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,10 +15,6 @@ st.set_page_config(page_title='Option Chain Analysis', page_icon=':shark:', layo
 st.title('Option Chain Analysis')
 
 # Variables
-url = 'https://www.nseindia.com/api/option-chain-indices?symbol=BANKNIFTY'
-expiry = '30-Sep-2021'
-excel_file = 'option_chain_analysis.xlsx'
-
 headers = {
     'User-Agent' : "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0",
     'Upgrade-Insecure-Requests': "1",
@@ -30,17 +28,16 @@ cookies = {
     'nsit': "DrveQOGzi0Z8hthvx2IDCcf6"
 }
 session = requests.session()
-
 for cookie in cookies:
     if 'bm_sv' in cookie or 'nseappid' in cookie or 'nsit' in cookie:
         session.cookies.set(cookie, cookies[cookie])
 
-def fetch_oi():
 
+def fetch_oi(url):
     data = session.get(url, headers=headers, timeout=25)
     #st.write(data.headers)
 
-    if data.status_code == 1:
+    if data.status_code == 200:
         data = data.json()
         with open("oidata.json", "w") as files:
             files.write(json.dumps(data, sort_keys=True))
@@ -52,25 +49,47 @@ def fetch_oi():
     return data
 
 def main():
-    data = fetch_oi()
+    # NO DATA WIDGETS
+    ticker = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'HDFCBANK', 'RELIANCE', 'NMDC']
+    script = st.sidebar.selectbox('Index to Trade?', ticker)
 
+    # VARIABLES
+    url = 'https://www.nseindia.com/api/option-chain-indices?symbol=' + script
+    excel_file = 'option_chain_analysis.xlsx'
+
+    # DATA
+    data = fetch_oi(url)
+    filtered = glom(data, 'filtered.data')
+    cepeData = glom(data, 'records.data')
+    ## Non-Nested Data
     strikePrices = glom(data, 'records.strikePrices')
+    expiryDates = glom(data, 'records.expiryDates')
+    spotPrice = glom(data, 'records.underlyingValue')
+    lastUpdated = glom(data, 'records.timestamp')
+    ## Nested Data
+    
+
+
+    # Ticker Information
+    a1, a2, a3, a4 = st.beta_columns(4)
+    a1.warning(script)
+    a2.success('Spot Price : ' + str(spotPrice))
+    a3.write('Last Updated : ' + str(lastUpdated))
+    a4.write()
+
     # WIDGETS
-    expiry = st.sidebar.selectbox('Expiry to Trade?', glom(data, 'records.expiryDates'))
-    script = st.sidebar.selectbox('Index to Trade?', ('NIFTY', 'BANKNIFTY', 'FINNIFTY'))
+    expiry = st.sidebar.selectbox('Expiry to Trade?', expiryDates)
     strikePrice = st.sidebar.slider('Select a range of Strike Prices', min(strikePrices), max(strikePrices), (min(strikePrices), max(strikePrices)))
     max_risk = st.sidebar.number_input('Maximum Risk', min_value=2000, max_value=50000, step=500)
     chosen = st.sidebar.radio('Options',("Call Buyer", "Call Seller", "Put Buyer", "Put Seller"))
     options_analysis = st.sidebar.multiselect('What data analysis do you want?', ['PCR', 'OI Change', 'Red', 'Blue'], ['PCR', 'OI Change'])
 
+    # Dislpay Data
+    oidata = pd.DataFrame.from_dict(pd.json_normalize(filtered), orient='columns')
+    st.write('Latest Expiry', oidata)
+    all_oidata = pd.DataFrame.from_dict(pd.json_normalize(cepeData), orient='columns')
+    st.write('All Expiries', all_oidata)
 
-    oidata = pd.DataFrame.from_dict(pd.json_normalize(glom(data, 'records.data')), orient='columns')
-    #oidata = pd.DataFrame(glom(data, 'records.data'))
-    #ce_values = pd.DataFrame(glom(oidata, 'CE'))
-    #pe_values = pd.DataFrame(glom(oidata, 'PE'))
-
-    st.dataframe(oidata)
-    st.dataframe(oidata.style.highlight_max(axis=0))
 
 if __name__ == '__main__':
     main()

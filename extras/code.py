@@ -36,3 +36,7 @@ ce_value.to_excel("option_chain_analysis.xlsx", sheet_name='CEValues')
 
 with open('oidata.json','r') as f:
     data = json.loads(f.read())
+
+    #oidata = pd.DataFrame(glom(data, 'records.data'))
+    #ce_values = pd.DataFrame(glom(oidata, 'CE'))
+    #pe_values = pd.DataFrame(glom(oidata, 'PE'))
