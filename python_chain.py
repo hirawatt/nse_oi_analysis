@@ -66,16 +66,18 @@ def main():
     expiryDates = glom(data, 'records.expiryDates')
     spotPrice = glom(data, 'records.underlyingValue')
     lastUpdated = glom(data, 'records.timestamp')
+    #index = glom(data, 'records.index')
     ## Nested Data
-    
+
 
 
     # Ticker Information
     a1, a2, a3, a4 = st.beta_columns(4)
-    a1.warning(script)
+    a1.error(script)
     a2.success('Spot Price : ' + str(spotPrice))
-    a3.write('Last Updated : ' + str(lastUpdated))
-    a4.write()
+    a3.info('Last Updated : ' + str(lastUpdated))
+    if a4.button('Refresh', help='Click to Refresh Data'):
+        main()
 
     # WIDGETS
     expiry = st.sidebar.selectbox('Expiry to Trade?', expiryDates)
@@ -95,15 +97,6 @@ if __name__ == '__main__':
     main()
 
 # WIDGETS
-left_column, right_column = st.beta_columns(2)
-if right_column.button('Refresh', help='Click to Refresh Data'):
-    main()
-with left_column:
-    LC = st.checkbox('Long Call')
-    LP = st.checkbox('Long Put')
-    SC = st.checkbox('Short Call')
-    SP = st.checkbox('Short Put')
-
 with st.beta_expander("See explanation"):
      st.write("""
               # Resources

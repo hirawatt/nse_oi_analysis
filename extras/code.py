@@ -37,6 +37,16 @@ ce_value.to_excel("option_chain_analysis.xlsx", sheet_name='CEValues')
 with open('oidata.json','r') as f:
     data = json.loads(f.read())
 
-    #oidata = pd.DataFrame(glom(data, 'records.data'))
-    #ce_values = pd.DataFrame(glom(oidata, 'CE'))
-    #pe_values = pd.DataFrame(glom(oidata, 'PE'))
+#oidata = pd.DataFrame(glom(data, 'records.data'))
+#ce_values = pd.DataFrame(glom(oidata, 'CE'))
+#pe_values = pd.DataFrame(glom(oidata, 'PE'))
+
+left_column, right_column = st.beta_columns(2)
+if right_column.button('Refresh', help='Click to Refresh Data'):
+    main()
+
+with left_column:
+    LC = st.checkbox('Long Call')
+    LP = st.checkbox('Long Put')
+    SC = st.checkbox('Short Call')
+    SP = st.checkbox('Short Put')
